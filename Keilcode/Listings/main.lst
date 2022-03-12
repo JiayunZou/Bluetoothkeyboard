@@ -1,0 +1,263 @@
+C51 COMPILER V9.54   MAIN                                                                  01/13/2022 10:37:11 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: D:\keil5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main.l
+                    -st) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include <REGX52.H>
+   2          #include "Delay.h"
+   3          #include "Timer0.h"
+   4          #include "UART.h"
+   5          #include "LCD1602.h"
+   6          #include "Key.h"
+   7          #include "Music.h"
+   8          
+   9          sbit Buzzer=P2^1; //蜂鸣器端口定义
+  10          
+  11          unsigned char FreqSelect,MusicSelect,ScaleNum,Music_Play,KeyNum;
+  12          
+  13          /**
+  14            * @brief  根据按键的数字确认音调
+  15            * @param  按键数字
+  16            * @retval 对应的音调
+  17            */
+  18          unsigned char Scale(unsigned char ScaleNumber)
+  19          {
+  20   1        unsigned char Scaleout;
+  21   1        switch(ScaleNumber)               
+  22   1        {
+  23   2              case 1:Scaleout=M1;break;
+  24   2              case 2:Scaleout=M2;break;
+  25   2              case 3:Scaleout=M3;break;
+  26   2              case 4:Scaleout=M4;break;
+  27   2              case 5:Scaleout=M5;break;
+  28   2              case 6:Scaleout=M6;break;
+  29   2              case 7:Scaleout=M7;break;
+  30   2              case 8:Scaleout=H1;break; 
+  31   2        }
+  32   1        return Scaleout;
+  33   1      }
+  34          
+  35          
+  36          
+  37          void main()
+  38          { 
+  39   1        unsigned int Password;
+  40   1        unsigned char i,Count,Lock=0;
+  41   1        LCD_Init();
+  42   1        LCD_ShowString(1,1,"PASSWORD:");
+  43   1        Timer0Init();
+  44   1        UART_Init();
+  45   1        while(1)
+  46   1        {
+  47   2          KeyNum=Key();
+  48   2          ScaleNum=Scale(KeyNum);
+  49   2          if(Lock==0&&KeyNum)       //如果没有解锁按键被检测到按下
+  50   2          {
+  51   3            
+  52   3            //密码模块
+  53   3            if(KeyNum<=6)          //输入密码 密码为六进制
+  54   3            {
+C51 COMPILER V9.54   MAIN                                                                  01/13/2022 10:37:11 PAGE 2   
+
+  55   4              if(Count<4) 
+  56   4              {
+  57   5                Password*=10;       
+  58   5                Password+=KeyNum%10;    
+  59   5                Count++;  
+  60   5              }
+  61   4              LCD_ShowNum(2,1,Password,4);  
+  62   4            }
+  63   3            if(KeyNum==7)         //确认按下 按键7为确认键
+  64   3            {
+  65   4              if(Password==2345)  
+  66   4              {
+  67   5                LCD_ShowString(1,14,"OK "); 
+  68   5                Lock=1;                         
+  69   5                Password=0;   
+  70   5                Count=0;    
+  71   5                LCD_ShowNum(2,1,Password,4);   //检测密码正确，计数清零，Lock标记解锁
+  72   5              }
+  73   4              else        
+  74   4              {
+  75   5                LCD_ShowString(1,14,"ERR"); 
+  76   5                  for(i=0;i<250;i++)
+  77   5                {
+  78   6                  Buzzer=!Buzzer;
+  79   6                  Delay(2);                       //检测密码错误，计数清零,蜂鸣器发出警报
+  80   6                }
+  81   5                Password=0;   
+  82   5                Count=0;    
+  83   5                LCD_ShowNum(2,1,Password,4);  
+  84   5              }
+  85   4            }
+  86   3            if(KeyNum==8)          //取消全部 按下按键8后password清零
+  87   3            {
+  88   4              Password=0;   
+  89   4              Count=0;    
+  90   4              LCD_ShowNum(2,1,Password,4);  
+  91   4            }
+  92   3          }
+  93   2          //电子琴模块
+  94   2          if(Lock==1&&KeyNum)           //解锁后检测到按键按下
+  95   2          {
+  96   3              Music_Play=0;
+  97   3              LCD_ShowString(1,1,"Enjoy MUSIC!!");
+  98   3              LCD_ShowString(2,1,"             ");
+  99   3              LCD_ShowNum(2,1,KeyNum,2);  
+ 100   3              TR0=1;
+ 101   3              FreqSelect=Scale(KeyNum);         //KeyNum转化为对应的音调赋值给频率选择
+ 102   3              Delay(SPEED/4); 
+ 103   3              TR0=0;
+ 104   3          }
+ 105   2          //播放音乐模块
+ 106   2          if(Lock==1&&Music_Play==1)
+ 107   2          {
+ 108   3            LCD_ShowString(2,1,"Music time!!!");
+ 109   3            if(Music1[MusicSelect]!=0xFF) 
+ 110   3            {
+ 111   4              FreqSelect=Music1[MusicSelect];       //通过MusicSelect取数组Music中的乐谱音调
+ 112   4              MusicSelect++;        
+ 113   4              Delay(SPEED/4*Music1[MusicSelect]);   //通过MusicSelect取数组Music中的乐谱时值
+ 114   4              MusicSelect++;
+ 115   4              TR0=0;                                
+ 116   4              Delay(5); 
+C51 COMPILER V9.54   MAIN                                                                  01/13/2022 10:37:11 PAGE 3   
+
+ 117   4              TR0=1;
+ 118   4            }
+ 119   3            else  
+ 120   3            {
+ 121   4              TR0=0;
+ 122   4              MusicSelect=0;                 //音乐结束，MusicSelect清零
+ 123   4            }
+ 124   3          }
+ 125   2          if(Lock==1&&Music_Play==2)
+ 126   2          {
+ 127   3            LCD_ShowString(2,1,"Music time!!!");
+ 128   3            if(Music2[MusicSelect]!=0xFF) 
+ 129   3            {
+ 130   4              FreqSelect=Music2[MusicSelect]; 
+ 131   4              MusicSelect++;
+ 132   4              Delay(SPEED/4*Music2[MusicSelect]); 
+ 133   4              MusicSelect++;
+ 134   4              TR0=0;
+ 135   4              Delay(5); 
+ 136   4              TR0=1;
+ 137   4            }
+ 138   3            else  
+ 139   3            {
+ 140   4              TR0=0;
+ 141   4              MusicSelect=0;
+ 142   4            }
+ 143   3          }
+ 144   2          if(Lock==1&&Music_Play==3)
+ 145   2          {
+ 146   3            LCD_ShowString(2,1,"Music time!!!");
+ 147   3            if(Music2[MusicSelect]!=0xFF) 
+ 148   3            {
+ 149   4              FreqSelect=Music3[MusicSelect]; 
+ 150   4              MusicSelect++;
+ 151   4              Delay(SPEED/4*Music3[MusicSelect]); 
+ 152   4              MusicSelect++;
+ 153   4              TR0=0;
+ 154   4              Delay(5); 
+ 155   4              TR0=1;
+ 156   4            }
+ 157   3            else  
+ 158   3            {
+ 159   4              TR0=0;
+ 160   4              MusicSelect=0;
+ 161   4            }
+ 162   3          }
+ 163   2        }
+ 164   1      }
+ 165          
+ 166          
+ 167          
+ 168          void Timer0_Routine() interrupt 1 //根据选定频率开启定时器
+ 169          {
+ 170   1        if(FreqTable[FreqSelect]) 
+ 171   1        {
+ 172   2          TL0 = FreqTable[FreqSelect]%256;     //配置低位定时器
+ 173   2          TH0 = FreqTable[FreqSelect]/256;     //配置高位定时器
+ 174   2          Buzzer=!Buzzer; 
+ 175   2        }
+ 176   1      }
+ 177          
+ 178          void UART_Routine() interrupt 4     //蓝牙模块
+C51 COMPILER V9.54   MAIN                                                                  01/13/2022 10:37:11 PAGE 4   
+
+ 179          {
+ 180   1        if(RI==1)         
+ 181   1        {   
+ 182   2          //蓝牙播放音乐
+ 183   2          if(SBUF==0x01)
+ 184   2          {
+ 185   3            Music_Play=1;
+ 186   3          }
+ 187   2          if(SBUF==0x02)
+ 188   2          {
+ 189   3            Music_Play=2;
+ 190   3          }
+ 191   2          if(SBUF==0x03)
+ 192   2          {
+ 193   3            Music_Play=3;
+ 194   3          }
+ 195   2          //蓝牙模拟按键按下
+ 196   2          if(SBUF==0x05)
+ 197   2          {
+ 198   3            KeyNum=1;
+ 199   3          }
+ 200   2          if(SBUF==0x06)
+ 201   2          {
+ 202   3            KeyNum=2;
+ 203   3          }
+ 204   2          if(SBUF==0x07)
+ 205   2          {
+ 206   3            KeyNum=3;
+ 207   3          }
+ 208   2          if(SBUF==0x08)
+ 209   2          {
+ 210   3            KeyNum=4;
+ 211   3          }
+ 212   2          if(SBUF==0x09)
+ 213   2          {
+ 214   3            KeyNum=5;
+ 215   3          }
+ 216   2          if(SBUF==0x0A)
+ 217   2          {
+ 218   3            KeyNum=6;
+ 219   3          }
+ 220   2          if(SBUF==0x0B)
+ 221   2          {
+ 222   3            KeyNum=7;
+ 223   3          }
+ 224   2          if(SBUF==0x0C)
+ 225   2          {
+ 226   3            KeyNum=8;
+ 227   3          }
+ 228   2          UART_SendByte(SBUF);
+ 229   2          RI=0;
+ 230   2        }
+ 231   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    813    ----
+   CONSTANT SIZE    =    597    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     79       5
+   IDATA SIZE       =   ----    ----
+C51 COMPILER V9.54   MAIN                                                                  01/13/2022 10:37:11 PAGE 5   
+
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

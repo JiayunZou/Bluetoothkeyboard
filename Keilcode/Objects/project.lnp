@@ -1,0 +1,8 @@
+".\Objects\main.obj",
+".\Objects\Timer0.obj",
+".\Objects\UART.obj",
+".\Objects\Delay.obj",
+".\Objects\LCD1602.obj",
+".\Objects\Key.obj" 
+TO ".\Objects\project" 
+PRINT(".\Listings\project.m51") RAMSIZE(256) 
